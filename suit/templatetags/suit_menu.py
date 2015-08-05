@@ -25,7 +25,7 @@ def get_menu(context, request):
         return None
 
     # Try to get app list
-    template_response = get_admin_site(context.current_app).index(request)
+    template_response = get_admin_site(context.current_app, request).index(request)
     try:
         app_list = template_response.context_data['app_list']
     except Exception:
@@ -34,14 +34,23 @@ def get_menu(context, request):
     return Menu(context, request, app_list).get_app_list()
 
 
-def get_admin_site(current_app):
+def get_admin_site(current_app, request=None):
     """
     Method tries to get actual admin.site class, if any custom admin sites
     were used. Couldn't find any other references to actual class other than
     in func_closer dict in index() func returned by resolver.
     """
+    script_name = ""
+    if request:
+        script_name = request.META.get('SCRIPT_NAME', False) if request else False
     try:
-        resolver_match = resolve(reverse('%s:index' % current_app))
+        url = reverse('%s:index' % current_app)
+
+        # it's needed to check whether script_name is used or not
+        if script_name:
+            url = url.replace(script_name, '/')
+
+        resolver_match = resolve(url)
         for func_closure in resolver_match.func.func_closure:
             if isinstance(func_closure.cell_contents, AdminSite):
                 return func_closure.cell_contents
